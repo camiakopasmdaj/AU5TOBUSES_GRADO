@@ -1,0 +1,16 @@
+{
+  "dependencies": {
+    "@capacitor/android": "^7.2.0",
+    "mqtt": "^5.10.4"
+  },
+  "name": "autobuses3",
+  "version": "1.0.0",
+  "main": "publicador_gps.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro de Bus | BusTracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#2c3e50">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <link rel="stylesheet" href="css/registrar_autobus.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  
+  <!-- Manifest para PWA -->
+  <link rel="manifest" href="manifest.json">
+</head>
+<body>
+  <div class="mobile-app">
+    <div class="app-header">
+      <div class="app-title">
+        <img src="imagenes/logo.jpg" alt="BusTracker" class="logo-img">
+        <span>Onroute</span>
+      </div>
+      
+      <button class="header-btn" onclick="window.location.href='admin_trazador.html'">
+        <i class="fas fa-map-marker-alt"></i>
+        <span>Trazador</span>
+      </button>
+    </div>
+    
+    <div class="main-container">
+      <div id="map"></div>
+      
+      <div class="registration-panel">
+        <div class="panel-header">
+          <div class="drag-handle"></div>
+        </div>
+        
+        <div class="registration-form">
+          <h2>Registro de Bus</h2>
+          
+          <div class="input-group">
+            <label for="busId"><i class="fas fa-bus-alt"></i> ID del Bus</label>
+            <input type="text" id="busId" value="TP10M" readonly>
+          </div>
+
+          <button class="action-btn" onclick="registrarBus()" id="registerBtn">
+            <i class="fas fa-paper-plane"></i>
+            <span>Registrar y comenzar envío</span>
+          </button>
+
+          <div id="status" class="status-container status-waiting">
+            <i class="fas fa-clock"></i>
+            <span>Esperando registro...</span>
+          </div>
+
+          <div class="coords-container">
+            <div class="coord-box">
+              <strong><i class="fas fa-latitude"></i> Latitud</strong>
+              <span id="lat">-</span>
+            </div>
+            <div class="coord-box">
+              <strong><i class="fas fa-longitude"></i> Longitud</strong>
+              <span id="lon">-</span>
+            </div>
+          </div>
+          
+          <!-- Estado de fondo -->
+          <div id="backgroundStatus" class="status-container status-waiting" style="display: none;">
+            <i class="fas fa-sync-alt"></i>
+            <span>Modo segundo plano activo</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Contenedor para notificaciones del sistema -->
+    <div id="systemNotificationContainer"></div>
+  </div>
+
+  <script>
+    // Variables globales
+    let busId = "";
+    let client = null;
+    let marker = null;
+    let map = null;
+    let updateInterval = null;
+    let isRegistering = false;
+    let positionHistory = [];
+    let lastMovementTime = Date.now();
+    let stationaryNotificationSent = false;
+    let watchId = null;
+    let isBackgroundMode = false;
+    let wakeLock = null;
+    let isSendingLocation = false;
+    let lastRetainedUpdate = 0;
+    let gpsPermissionGranted = false;
+    let backgroundPositionInterval = null; // ✅ NUEVO: Para tracking en segundo plano
+
+  
+    const mqttOptions = {
+      username: "busTrackerUser",
+      password: "311411Camil@",
+      clean: true,
+      connectTimeout: 4000,
+      reconnectPeriod: 1000
+    };
+
+    const busIcon = L.icon({
+      iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+      shadowSize: [41, 41],
+      className: 'bus-marker'
+    });
+
+    async function registerServiceWorker() {
+      if ('serviceWorker' in navigator) {
+        try {
+          // Primero, creamos el archivo sw.js dinámicamente si no existe
+          await createServiceWorkerIfNeeded();
+          
+          const registration = await navigator.serviceWorker.register('/sw.js');
+          console.log(' Service Worker registrado con éxito');
+          
+          // Verificar si Background Sync está disponible
+          if ('sync' in registration) {
+            await registration.sync.register('gps-background-sync');
+            console.log('Background Sync registrado');
+          }
+          
+          return true;
+        } catch (error) {
+          console.error(' Error registrando Service Worker:', error);
+          return false;
+        }
+      }
+      return false;
+    }
+
+    // ✅ NUEVA FUNCIÓN: Crear Service Worker dinámicamente
+    async function createServiceWorkerIfNeeded() {
+      // Intentar recuperar el service worker existente
+      try {
+        const response = await fetch('/sw.js');
+        if (response.ok) return; // Ya existe
+      } catch (e) {
+        // No existe, lo creamos
+      }
+
+      // Crear el Service Worker dinámicamente
+      const swCode = `
+        self.addEventListener('sync', (event) => {
+          if (event.tag === 'gps-background-sync') {
+            console.log('🔄 Background Sync ejecutándose...');
+            event.waitUntil(doBackgroundSync());
+          }
+        });
+
+        async function doBackgroundSync() {
+          // Enviar posiciones almacenadas localmente
+          const storedPositions = await getStoredPositions();
+          if (storedPositions.length > 0) {
+            await sendPositionsToServer(storedPositions);
+            await clearStoredPositions();
+          }
+        }
+
+        async function getStoredPositions() {
+          return new Promise((resolve) => {
+            const request = indexedDB.open('BusTrackerDB', 1);
+            request.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction(['positions'], 'readonly');
+              const store = transaction.objectStore('positions');
+              const getAllRequest = store.getAll();
+              getAllRequest.onsuccess = () => resolve(getAllRequest.result);
+            };
+            request.onerror = () => resolve([]);
+          });
+        }
+
+        async function sendPositionsToServer(positions) {
+          // Aquí iría la lógica para enviar a MQTT
+          // Por simplicidad, solo mostramos en consola
+          console.log('📤 Enviando posiciones en background:', positions.length);
+          return Promise.resolve();
+        }
+
+        async function clearStoredPositions() {
+          return new Promise((resolve) => {
+            const request = indexedDB.open('BusTrackerDB', 1);
+            request.onsuccess = (event) => {
+              const db = event.target.result;
+              const transaction = db.transaction(['positions'], 'readwrite');
+              const store = transaction.objectStore('positions');
+              const clearRequest = store.clear();
+              clearRequest.onsuccess = () => resolve();
+            };
+          });
+        }
+
+        // Inicializar IndexedDB
+        self.addEventListener('install', (event) => {
+          const request = indexedDB.open('BusTrackerDB', 1);
+          request.onupgradeneeded = (event) => {
+            const db = event.target.result;
+            if (!db.objectStoreNames.contains('positions')) {
+              db.createObjectStore('positions', { keyPath: 'id', autoIncrement: true });
+            }
+          };
+        });
+      `;
+
+      // Guardar el Service Worker (esto normalmente se haría en el servidor)
+      // Para desarrollo, usamos Blob URL
+      const blob = new Blob([swCode], { type: 'application/javascript' });
+      const swURL = URL.createObjectURL(blob);
+      
+      // Re-registrar con el Blob URL
+      if ('serviceWorker' in navigator) {
+        await navigator.serviceWorker.register(swURL);
+      }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Almacenar posición para background
+    function storePositionForBackground(lat, lon, timestamp) {
+      if (!busId) return;
+
+      const positionData = {
+        busId: busId,
+        lat: lat,
+        lon: lon,
+        timestamp: timestamp,
+        storedAt: Date.now()
+      };
+
+      // Almacenar en localStorage como fallback
+      const storedPositions = JSON.parse(localStorage.getItem('busPositions') || '[]');
+      storedPositions.push(positionData);
+      
+      // Mantener solo las últimas 50 posiciones
+      if (storedPositions.length > 50) {
+        storedPositions.splice(0, storedPositions.length - 50);
+      }
+      
+      localStorage.setItem('busPositions', JSON.stringify(storedPositions));
+      
+      console.log('💾 Posición almacenada para background:', positionData);
+    }
+
+    // ✅ NUEVA FUNCIÓN: Enviar posiciones almacenadas
+    function sendStoredPositions() {
+      const storedPositions = JSON.parse(localStorage.getItem('busPositions') || '[]');
+      
+      if (storedPositions.length > 0 && client && client.connected) {
+        console.log(`📤 Enviando ${storedPositions.length} posiciones almacenadas`);
+        
+        storedPositions.forEach((position, index) => {
+          setTimeout(() => {
+            const payload = JSON.stringify({
+              busId: position.busId,
+              lat: position.lat,
+              lon: position.lon,
+              timestamp: position.timestamp,
+              fromBackground: true
+            });
+            
+            client.publish(`buses/${position.busId}`, payload);
+          }, index * 100); // Espaciar envíos
+        });
+        
+        // Limpiar posiciones enviadas
+        localStorage.removeItem('busPositions');
+      }
+    }
+
+    // ✅ NUEVA FUNCIÓN: Iniciar tracking en segundo plano
+    function startBackgroundTracking() {
+      if (backgroundPositionInterval) {
+        clearInterval(backgroundPositionInterval);
+      }
+
+      backgroundPositionInterval = setInterval(() => {
+        if (document.hidden && isSendingLocation) {
+          // La app está en segundo plano, obtener y almacenar posición
+          navigator.geolocation.getCurrentPosition(
+            (position) => {
+              const lat = position.coords.latitude.toFixed(6);
+              const lon = position.coords.longitude.toFixed(6);
+              const timestamp = new Date().toISOString();
+              
+              console.log('📍 Posición en background:', { lat, lon });
+              
+              // Almacenar para enviar cuando haya conexión
+              storePositionForBackground(lat, lon, timestamp);
+              
+              // Intentar enviar inmediatamente si hay conexión
+              if (client && client.connected) {
+                const payload = JSON.stringify({
+                  busId: busId,
+                  lat: lat,
+                  lon: lon,
+                  timestamp: timestamp,
+                  status: "online",
+                  fromBackground: true
+                });
+                
+                client.publish(`buses/${busId}`, payload);
+              }
+            },
+            (error) => {
+              console.log('❌ Error GPS en background:', error.message);
+            },
+            {
+              enableHighAccuracy: true,
+              timeout: 5000,
+              maximumAge: 30000
+            }
+          );
+        }
+      }, 1000); // Cada 5 segundos en segundo plano
+    }
+
+    // Solicitar Wake Lock para evitar que el dispositivo entre en suspensión
+    async function requestWakeLock() {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          console.log('Wake Lock activado');
+          
+          wakeLock.addEventListener('release', () => {
+            console.log('Wake Lock liberado');
+          });
+        }
+      } catch (err) {
+        console.error('Error al activar Wake Lock:', err);
+      }
+    }
+
+    // Liberar Wake Lock
+    async function releaseWakeLock() {
+      if (wakeLock !== null) {
+        await wakeLock.release();
+        wakeLock = null;
+        console.log('Wake Lock liberado');
+      }
+    }
+
+    // Función para mostrar notificación del sistema
+    function showSystemNotification(message, type = 'warning') {
+      const notificationContainer = document.getElementById('systemNotificationContainer');
+      
+      const notification = document.createElement('div');
+      notification.className = `system-notification ${type}`;
+      notification.innerHTML = `
+        <i class="fas fa-${type === 'error' ? 'exclamation-triangle' : type === 'success' ? 'check-circle' : 'info-circle'}"></i>
+        <p>${message}</p>
+      `;
+      
+      notificationContainer.appendChild(notification);
+      
+      // Eliminar la notificación después de 5 segundos
+      setTimeout(() => {
+        notification.style.animation = 'slideOutNotification 0.3s forwards';
+        setTimeout(() => notification.remove(), 300);
+      }, 5000);
+    }
+
+    // MEJORADA: Verificar y solicitar permisos de geolocalización
+    function checkGeolocationPermission() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject("Geolocalización no soportada");
+          return;
+        }
+        
+        // Primero intentar obtener la posición actual para forzar el diálogo de permisos
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            gpsPermissionGranted = true;
+            resolve("Permiso concedido");
+          },
+          (error) => {
+            // Manejar diferentes tipos de errores
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                reject("Permiso de ubicación denegado. Activa el GPS y recarga la página.");
+                break;
+              case error.POSITION_UNAVAILABLE:
+                reject("Ubicación no disponible. Verifica que el GPS esté activado.");
+                break;
+              case error.TIMEOUT:
+                reject("Tiempo de espera agotado. Verifica la conexión GPS.");
+                break;
+              default:
+                reject("Error desconocido: " + error.message);
+                break;
+            }
+          },
+          { 
+            enableHighAccuracy: true,
+            timeout: 10000, // 10 segundos de timeout
+            maximumAge: 0 
+          }
+        );
+      });
+    }
+
+    // NUEVA FUNCIÓN: Verificar estado del GPS y solicitar activación
+    function checkGPSStatus() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) {
+          reject("Geolocalización no soportada");
+          return;
+        }
+
+        let timeoutId = setTimeout(() => {
+          reject("GPS no responde. Verifica que esté activado.");
+        }, 5000);
+
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            clearTimeout(timeoutId);
+            gpsPermissionGranted = true;
+            resolve({
+              coords: position.coords,
+              message: "GPS activo y funcionando"
+            });
+          },
+          (error) => {
+            clearTimeout(timeoutId);
+            let errorMessage = "";
+            switch(error.code) {
+              case error.PERMISSION_DENIED:
+                errorMessage = "Permiso de GPS denegado. Actívalo en configuración.";
+                break;
+              case error.POSITION_UNAVAILABLE:
+                errorMessage = "GPS no disponible. Actívalo y recarga la página.";
+                break;
+              case error.TIMEOUT:
+                errorMessage = "GPS no responde. Verifica que esté activado.";
+                break;
+              default:
+                errorMessage = "Error GPS: " + error.message;
+            }
+            reject(errorMessage);
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 5000,
+            maximumAge: 0
+          }
+        );
+      });
+    }
+
+    // Función para verificar si el bus está parado
+    function checkIfBusIsStopped(currentLat, currentLon) {
+      const now = Date.now();
+      const stationaryThreshold = 600000;
+      const positionChangeThreshold = 0.0001;
+      
+      positionHistory.push({
+        lat: currentLat,
+        lon: currentLon,
+        timestamp: now
+      });
+      
+      positionHistory = positionHistory.filter(pos => now - pos.timestamp <= 300000);
+      
+      let hasMoved = false;
+      if (positionHistory.length > 1) {
+        const firstPos = positionHistory[0];
+        const distance = calculateDistance(
+          firstPos.lat, firstPos.lon,
+          currentLat, currentLon
+        );
+        
+        if (distance > positionChangeThreshold) {
+          hasMoved = true;
+          lastMovementTime = now;
+          stationaryNotificationSent = false;
+        }
+      }
+      
+      if (!hasMoved && now - lastMovementTime >= stationaryThreshold && !stationaryNotificationSent) {
+        const notificationMessage = `🚌 El bus ${busId} está parado hace más de 10 minutos.`;
+        
+        if (client && client.connected) {
+          const payload = JSON.stringify({
+            busId: busId,
+            motivo: "Bus parado por más de 10 minutos",
+            timestamp: new Date().toISOString(),
+            mensaje: notificationMessage
+          });
+          client.publish("buses/retrasos", payload);
+        }
+        
+        showSystemNotification(notificationMessage);
+        stationaryNotificationSent = true;
+      }
+    }
+
+    // Calcular distancia entre dos puntos geográficos
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371;
+      const dLat = deg2rad(lat2 - lat1);
+      const dLon = deg2rad(lon2 - lon1);
+      const a = 
+        Math.sin(dLat/2) * Math.sin(dLat/2) +
+        Math.cos(deg2rad(lat1)) * Math.cos(deg2rad(lat2)) * 
+        Math.sin(dLon/2) * Math.sin(dLon/2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+      return R * c;
+    }
+
+    function deg2rad(deg) {
+      return deg * (Math.PI/180);
+    }
+
+    // Inicializar mapa
+    function initMap() {
+      map = L.map('map', {
+        zoomControl: false,
+        dragging: true,
+        tap: false
+      }).setView([2.4382, -76.6132], 15);
+      
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: ""
+      }).addTo(map);
+      
+      L.control.zoom({
+        position: 'bottomright'
+      }).addTo(map);
+    }
+
+    
+
+  async function registrarBus() {
+    if (isRegistering) return;
+    isRegistering = true;
+    
+    const btn = document.getElementById('registerBtn');
+    const originalContent = btn.innerHTML;
+    btn.innerHTML = '<div class="loading-spinner"></div><span>Verificando GPS...</span>';
+    btn.disabled = true;
+    
+    // Detener envío anterior si existe
+    if (updateInterval) clearInterval(updateInterval);
+    if (watchId) navigator.geolocation.clearWatch(watchId);
+    if (backgroundPositionInterval) clearInterval(backgroundPositionInterval);
+    if (client) {
+        client.end();
+        client = null;
+    }
+    
+    // Reiniciar variables
+    positionHistory = [];
+    lastMovementTime = Date.now();
+    stationaryNotificationSent = false;
+    
+    // Obtener ID del bus
+    busId = document.getElementById("busId").value.trim();
+    if (!busId) {
+        updateStatus("Por favor ingresa un ID de bus", "error");
+        showSystemNotification("Por favor ingresa un ID de bus", "error");
+        resetButton(btn, originalContent);
+        isRegistering = false;
+        return;
+    }
+
+    // 🔥🔥🔥 AQUÍ COMIENZA EL CAMBIO - REEMPLAZA DESDE ESTA LÍNEA:
+    try {
+        // 🔥 DETECTAR SI ESTAMOS EN APP ANDROID
+       if (typeof AndroidApp !== "undefined") {
+    // 📱 MODO APP ANDROID - SUPER SIMPLE
+    updateStatus("Activando servicio Android...", "waiting");
+    
+    // Iniciar el servicio de Android en segundo plano
+    AndroidApp.iniciarServicio();
+    
+    // 🔥 SÚPER SIMPLE: Usar el GPS del WebView directamente
+    console.log("📱 Modo Android - Usando GPS del WebView");
+    
+    if (navigator.geolocation) {
+        // Obtener posición cada 2 segundos
+        setInterval(() => {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const lat = position.coords.latitude.toFixed(6);
+                    const lon = position.coords.longitude.toFixed(6);
+                    
+                    // 🎯 MOSTRAR DIRECTAMENTE EN LA INTERFAZ
+                    document.getElementById('lat').textContent = lat;
+                    document.getElementById('lon').textContent = lon;
+                    
+                    // Actualizar mapa también
+                    if (typeof updateMapPosition === 'function') {
+                        updateMapPosition(lat, lon);
+                    }
+                    
+                    console.log("📍 Coordenadas en UI:", lat, lon);
+                },
+                (error) => {
+                    // Si hay error, mostrar algo
+                    document.getElementById('lat').textContent = 'GPS activo';
+                    document.getElementById('lon').textContent = new Date().toLocaleTimeString();
+                },
+                {
+                    enableHighAccuracy: true,
+                    timeout: 5000,
+                    maximumAge: 0
+                }
+            );
+        }, 2000); // Cada 2 segundos
+    }
+    
+    // Mostrar éxito
+    updateStatus("✅ Servicio Android activo", "active");
+    showSystemNotification("🚀 Servicio Android activado", "success");
+    
+    btn.innerHTML = '<i class="fas fa-check-circle"></i><span>✅ SEGUIMIENTO ACTIVO</span>';
+    btn.disabled = false;
+    isRegistering = false;
+    
+} else {
+    // 🌐 MODO NAVEGADOR WEB - Tu código original
+    // ... (todo tu código web normal)
+
+            // 🌐 MODO NAVEGADOR WEB - Tu código ORIGINAL COMPLETO
+            // PRIMERO: Verificar que el GPS esté activo y funcionando
+            updateStatus("Verificando estado del GPS...", "waiting");
+            await checkGPSStatus();
+            
+            // SEGUNDO: Registrar Service Worker para funcionamiento en segundo plano
+            updateStatus("Configurando segundo plano...", "waiting");
+            const swRegistered = await registerServiceWorker();
+            
+            if (swRegistered) {
+                document.getElementById('backgroundStatus').style.display = 'flex';
+                isBackgroundMode = true;
+                showSystemNotification("✅ Modo segundo plano activado", "success");
+            }
+            
+            // TERCERO: Conectar a MQTT
+            updateStatus("Conectando a MQTT...", "waiting");
+            btn.innerHTML = '<div class="loading-spinner"></div><span>Conectando...</span>';
+            
+            client = mqtt.connect("wss://8d9a31655be84e56b5601620210f24ac.s1.eu.hivemq.cloud:8884/mqtt", mqttOptions);
+
+            // Configurar manejadores de eventos MQTT
+            client.on("connect", () => {
+                updateStatus(`Conectado - Bus ID: ${busId}`, "active");
+                showSystemNotification(`✅ Conexión establecida para el bus ${busId}`, "success");
+                
+                // Solicitar Wake Lock
+                requestWakeLock();
+                
+                // Iniciar envío de ubicación
+                isSendingLocation = true;
+                comenzarEnvio();
+                
+                // ✅ INICIAR TRACKING EN SEGUNDO PLANO
+                startBackgroundTracking();
+                
+                btn.innerHTML = '<i class="fas fa-check-circle"></i><span>Enviando datos...</span>';
+                btn.disabled = false;
+                isRegistering = false;
+                
+                // Enviar cualquier posición almacenada
+                sendStoredPositions();
+            });
+
+            client.on("error", (err) => {
+                console.error("Error MQTT:", err);
+                updateStatus("Error de conexión MQTT", "error");
+                showSystemNotification("❌ Error de conexión MQTT", "error");
+                resetButton(btn, originalContent);
+                isSendingLocation = false;
+            });
+        }
+
+    } catch (error) {
+        console.error("Error en registro:", error);
+        updateStatus("Error: " + error, "error");
+        showSystemNotification("❌ Error: " + error, "error");
+        resetButton(btn, originalContent);
+        isSendingLocation = false;
+        
+        // Mostrar instrucciones específicas para el usuario
+        if (error.includes("GPS") || error.includes("ubicación")) {
+            showSystemNotification("💡 Solución: Activa el GPS en tu dispositivo y vuelve a intentar", "info");
+        }
+    }
+}
+
+// 🔥 AGREGAR ESTA NUEVA FUNCIÓN AL FINAL DEL SCRIPT (antes de las últimas líneas):
+// ✅ NUEVA FUNCIÓN MEJORADA - USA DATOS REALES
+function simularCoordenadasAndroid() {
+    // En la app Android, podemos obtener coordenadas reales
+    if (navigator.geolocation) {
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude.toFixed(6);
+                const lon = position.coords.longitude.toFixed(6);
+                
+                if (document.getElementById('lat') && document.getElementById('lon')) {
+                    document.getElementById('lat').textContent = lat;
+                    document.getElementById('lon').textContent = lon;
+                }
+                
+                // También actualizar el mapa si existe
+                if (window.updateMapPosition) {
+                    updateMapPosition(lat, lon);
+                }
+            },
+            (error) => {
+                // Si hay error, mostrar mensaje
+                if (document.getElementById('lat') && document.getElementById('lon')) {
+                    document.getElementById('lat').textContent = 'GPS activo';
+                    document.getElementById('lon').textContent = 'Actualizando...';
+                }
+            },
+            {
+                enableHighAccuracy: true,
+                maximumAge: 1000,
+                timeout: 5000
+            }
+        );
+        
+        // Guardar el watchId para limpiarlo después
+        window.androidGpsWatchId = watchId;
+    } else {
+        // Fallback si no hay GPS disponible
+        setInterval(() => {
+            if (document.getElementById('lat') && document.getElementById('lon')) {
+                document.getElementById('lat').textContent = 'GPS activo';
+                document.getElementById('lon').textContent = new Date().toLocaleTimeString();
+            }
+        }, 2000);
+    }
+}
+    // ✅ FUNCIÓN PARA LIMPIAR EL GPS CUANDO SE DETENGA
+function limpiarGPSAndroid() {
+    if (window.androidGpsWatchId && navigator.geolocation) {
+        navigator.geolocation.clearWatch(window.androidGpsWatchId);
+    }
+}
+    
+
+    // NUEVA FUNCIÓN: Resetear botón
+    function resetButton(btn, originalContent) {
+      btn.innerHTML = originalContent;
+      btn.disabled = false;
+      isRegistering = false;
+    }
+
+    // MEJORADA: Comenzar envío de ubicación con mejor manejo de errores
+    function comenzarEnvio() {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      
+      let errorCount = 0;
+      const maxErrors = 3;
+      
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          errorCount = 0; // Resetear contador de errores en éxito
+          
+          const lat = position.coords.latitude;
+          const lon = position.coords.longitude;
+          const latFixed = lat.toFixed(6);
+          const lonFixed = lon.toFixed(6);
+          const timestamp = new Date().toISOString();
+          
+          // Actualizar UI
+          document.getElementById("lat").textContent = latFixed;
+          document.getElementById("lon").textContent = lonFixed;
+          
+          // Verificar si el bus está parado
+          checkIfBusIsStopped(lat, lon);
+          
+          // Publicar en MQTT
+          if (client && client.connected && isSendingLocation) {
+            const payload = JSON.stringify({
+              busId: busId,
+              lat: latFixed,
+              lon: lonFixed,
+              timestamp: timestamp,
+              status: "online"
+            });
+            
+            client.publish(`buses/${busId}`, payload);
+            
+            if (Date.now() - lastRetainedUpdate > 30000) {
+              client.publish(`buses/${busId}/backup`, payload, { retain: true });
+              lastRetainedUpdate = Date.now();
+            }
+          } else {
+            // ✅ ALMACENAR PARA BACKGROUND SI NO HAY CONEXIÓN
+            storePositionForBackground(latFixed, lonFixed, timestamp);
+          }
+          
+          // Actualizar mapa
+          updateMapPosition(latFixed, lonFixed);
+        },
+        (err) => {
+          errorCount++;
+          console.error("Error GPS (#" + errorCount + "):", err);
+          
+          let errorMsg = "Error GPS: ";
+          switch(err.code) {
+            case err.PERMISSION_DENIED:
+              errorMsg = "Permiso GPS denegado. Recarga la página y permite ubicación.";
+              break;
+            case err.POSITION_UNAVAILABLE:
+              errorMsg = "GPS no disponible. Verifica que esté activado.";
+              break;
+            case err.TIMEOUT:
+              errorMsg = "GPS no responde. Verifica la señal.";
+              break;
+            default:
+              errorMsg = "Error GPS: " + err.message;
+          }
+          
+          updateStatus(errorMsg, "error");
+          
+          // Si hay muchos errores consecutivos, sugerir reinicio
+          if (errorCount >= maxErrors) {
+            showSystemNotification("🔧 Problemas con GPS. Intenta recargar la página.", "warning");
+          }
+        },
+        { 
+          enableHighAccuracy: true,
+          maximumAge: 0, // 1 segundo máximo de datos en caché
+          timeout: 10000   // 10 segundos de timeout
+        }
+      );
+    }
+
+    // Actualizar posición en el mapa
+    function updateMapPosition(lat, lon) {
+      if (!marker) {
+        marker = L.marker([lat, lon], {
+          icon: busIcon
+        }).addTo(map)
+        .bindPopup(`<b>Bus:</b> ${busId}<br><b>Última actualización:</b> ${new Date().toLocaleTimeString()}`);
+        map.setView([lat, lon], 17);
+      } else {
+        marker.setLatLng([lat, lon]);
+        marker.setPopupContent(`<b>Bus:</b> ${busId}<br><b>Última actualización:</b> ${new Date().toLocaleTimeString()}`);
+      }
+    }
+
+    // Actualizar estado de conexión
+    function updateStatus(message, type) {
+      const status = document.getElementById("status");
+      status.className = `status-container status-${type}`;
+      
+      let icon = 'clock';
+      if (type === "active") icon = 'check-circle';
+      if (type === "error") icon = 'exclamation-circle';
+      
+      status.innerHTML = `<i class="fas fa-${icon}"></i><span>${message}</span>`;
+    }
+
+    // Función para limpiar posición al salir
+    function limpiarPosicionAlSalir() {
+      if (client && client.connected && busId) {
+        const payload = JSON.stringify({
+          busId: busId,
+          status: "offline",
+          timestamp: new Date().toISOString()
+        });
+        client.publish(`buses/${busId}/status`, payload, { qos: 1, retain: true });
+        client.publish(`buses/${busId}`, "", { retain: true });
+        client.publish(`buses/${busId}/backup`, "", { retain: true });
+      }
+    }
+
+    // ✅ NUEVO: Detectar cambios de visibilidad
+    document.addEventListener('visibilitychange', () => {
+      if (document.hidden) {
+        console.log('📱 App en segundo plano - Continuando tracking...');
+        showSystemNotification("🔄 La app continúa funcionando en segundo plano", "info");
+      } else {
+        console.log('📱 App en primer plano');
+        // Re-sincronizar posiciones almacenadas
+        sendStoredPositions();
+      }
+    });
+
+    // Inicializar al cargar
+    document.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      
+      document.getElementById("busId").addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') registrarBus();
+      });
+    });
+
+    // Limpiar al salir
+    window.addEventListener('beforeunload', () => {
+      limpiarPosicionAlSalir();
+      if (updateInterval) clearInterval(updateInterval);
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+      if (backgroundPositionInterval) clearInterval(backgroundPositionInterval);
+      if (client) client.end();
+      releaseWakeLock();
+    });
+
+    
+  </script>
+</body>
+</html>
+
+
+
+

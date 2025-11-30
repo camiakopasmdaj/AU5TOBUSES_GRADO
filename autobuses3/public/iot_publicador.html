@@ -1,0 +1,61 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+  <title>IoT Bus GPS Publisher</title>
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+</head>
+<body>
+  <h2>Ubicación del Bus - Publicador MQTT</h2>
+  <p id="status">Conectando al broker...</p>
+  <p>Latitud: <span id="lat">-</span></p>
+  <p>Longitud: <span id="lon">-</span></p>
+
+  <script>
+    // Configuración MQTT
+    const options = {
+      username: "busTrackerUser",
+      password: "311411Camil@",
+      clean: true,
+      connectTimeout: 4000,
+      reconnectPeriod: 1000,
+    };
+
+    const client = mqtt.connect("wss://8d9a31655be84e56b5601620210f24ac.s1.eu.hivemq.cloud:8884/mqtt", options);
+
+    client.on("connect", () => {
+      document.getElementById("status").textContent = "🟢 Conectado al broker MQTT";
+      startPublishing();
+    });
+
+    client.on("error", (err) => {
+      document.getElementById("status").textContent = "🔴 Error al conectar: " + err.message;
+    });
+
+    function startPublishing() {
+      setInterval(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition((position) => {
+            const lat = position.coords.latitude.toFixed(6);
+            const lon = position.coords.longitude.toFixed(6);
+
+            document.getElementById("lat").textContent = lat;
+            document.getElementById("lon").textContent = lon;
+
+            const payload = JSON.stringify({
+              busId: "bus_001",
+              lat: lat,
+              lon: lon,
+              timestamp: new Date().toISOString()
+            });
+
+            client.publish("buses/bus_001", payload);
+          });
+        } else {
+          document.getElementById("status").textContent = "🚫 Geolocalización no soportada";
+        }
+      }, 500); // publica cada 5 segundos
+    }
+  </script>
+</body>
+</html>
