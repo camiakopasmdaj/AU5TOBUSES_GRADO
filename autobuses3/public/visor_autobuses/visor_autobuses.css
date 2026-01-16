@@ -1,0 +1,825 @@
+ 
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+    
+    body {
+      font-family: 'Roboto', sans-serif;
+      background-color: #f5f5f5;
+      color: #333;
+      overscroll-behavior: none;
+      position: fixed;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+    }
+    
+    /* Diseño de aplicación móvil */
+    .mobile-app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      background: white;
+      max-width: 100%;
+      margin: 0 auto;
+    }
+    
+    /* Header fijo */
+    .app-header {
+      background: #1a1a1a;
+      color: white;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+      z-index: 1000;
+      position: relative;
+    }
+    
+    .app-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+    }
+    
+    .notification-bell {
+      position: relative;
+      font-size: 20px;
+      padding: 8px;
+    }
+    
+    .notification-badge {
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      background: #ff4757;
+      color: white;
+      border-radius: 50%;
+      width: 18px;
+      height: 18px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      display: none;
+    }
+    
+    /* Panel de notificaciones */
+    .notification-panel {
+      position: absolute;
+      top: 100%;
+      right: 10px;
+      background: white;
+      width: 85%;
+      max-width: 320px;
+      border-radius: 12px;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.15);
+      z-index: 1001;
+      padding: 15px;
+      color: #333;
+      display: none;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    
+    .notification-panel h3 {
+      margin-bottom: 12px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #eee;
+      font-size: 16px;
+    }
+    
+    .notification-list {
+      list-style: none;
+    }
+    
+    .notification-list li {
+      padding: 12px 0;
+      border-bottom: 1px solid #f0f0f0;
+      font-size: 14px;
+    }
+    
+    .notification-list li:last-child {
+      border-bottom: none;
+    }
+    
+    /* Contenedor del mapa */
+    .map-container {
+      flex: 1;
+      position: relative;
+      overflow: hidden;
+    }
+    
+    #map {
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    
+    /* Barra de estado */
+    .status-bar {
+      position: absolute;
+      bottom: 15px;
+      left: 15px;
+      right: 15px;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 12px 15px;
+      border-radius: 12px;
+      font-size: 13px;
+      z-index: 2;
+      box-shadow: 0 3px 12px rgba(0,0,0,0.15);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+    }
+    
+    .connection-status, .update-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    /* Botones de acción flotantes */
+    .floating-buttons {
+      position: absolute;
+      bottom: 80px;
+      right: 15px;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .action-button {
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: #1a1a1a;
+      color: white;
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    
+    .action-button:active {
+      transform: scale(0.95);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    
+    /* Barra inferior de navegación */
+    .bottom-nav {
+      background: #1a1a1a;
+      padding: 12px 15px;
+      display: flex;
+      justify-content: space-between;
+      z-index: 1000;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    }
+    
+    .nav-button {
+      background: #333;
+      color: white;
+      border: none;
+      padding: 12px 15px;
+      border-radius: 8px;
+      font-size: 14px;
+      flex: 1;
+      margin: 0 5px;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .nav-button:active {
+      background: #555;
+    }
+    
+    /* Botón de activar sonido */
+    #enableSound {
+      position: absolute;
+      top: 15px;
+      left: 15px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      font-size: 13px;
+      z-index: 2;
+      cursor: pointer;
+      backdrop-filter: blur(5px);
+      -webkit-backdrop-filter: blur(5px);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    /* Alertas */
+    .alert {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      padding: 15px 20px;
+      border-radius: 10px;
+      color: white;
+      z-index: 10000;
+      max-width: 90%;
+      animation: slideIn 0.3s forwards;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+      text-align: center;
+      font-size: 14px;
+    }
+    
+    .alert-error { background: #ff4757; }
+    .alert-success { background: #2ed573; }
+    .alert-warning { background: #ffa502; }
+    
+    @keyframes slideIn {
+      from { top: -100px; opacity: 0; }
+      to { top: 20px; opacity: 1; }
+    }
+    
+    @keyframes slideOut {
+      from { top: 20px; opacity: 1; }
+      to { top: -100px; opacity: 0; }
+    }
+    
+    /* Popup personalizado */
+    .bus-popup {
+      min-width: 220px;
+    }
+    
+    .bus-popup h4 {
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+    
+    .bus-popup button {
+      background: #1a73e8;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 6px;
+      margin-top: 10px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 14px;
+      transition: background 0.2s;
+    }
+    
+    .bus-popup button:active {
+      background: #1557b0;
+    }
+    
+    /* Ajustes para el zoom del mapa en móviles */
+    .leaflet-bar {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3) !important;
+    }
+    
+    .leaflet-touch .leaflet-bar a {
+      width: 35px !important;
+      height: 35px !important;
+      line-height: 35px !important;
+    }
+    
+    /* Mejora de visualización en diferentes dispositivos */
+    @media (max-height: 700px) {
+      .status-bar {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        padding: 10px;
+      }
+      
+      .floating-buttons {
+        bottom: 70px;
+        right: 10px;
+      }
+      
+      .action-button {
+        width: 45px;
+        height: 45px;
+        font-size: 18px;
+      }
+    }
+    
+    /* Soporte para dispositivos con notch */
+    @supports(padding: max(0px)) {
+      .app-header {
+        padding-top: max(14px, env(safe-area-inset-top));
+        padding-left: max(16px, env(safe-area-inset-left));
+        padding-right: max(16px, env(safe-area-inset-right));
+      }
+      
+      .bottom-nav {
+        padding-bottom: max(12px, env(safe-area-inset-bottom));
+        padding-left: max(15px, env(safe-area-inset-left));
+        padding-right: max(15px, env(safe-area-inset-right));
+      }
+      
+      .map-container {
+        padding-left: env(safe-area-inset-left);
+        padding-right: env(safe-area-inset-right);
+      }
+    }
+
+    .action-button#centerActiveBus {
+        background: #576fc0;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        width: auto;
+        min-width: 60px;
+        height: 40px;
+        font-size: 12px;
+        font-weight: 600;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        padding: 0 10px;
+        box-shadow: 0 2px 8px rgba(231, 76, 60, 0.3);
+        transition: all 0.3s ease;
+    }
+
+    .action-button#centerActiveBus:hover {
+        background: #c0392b;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.4);
+    }
+
+    .action-button#centerActiveBus i {
+        font-size: 14px;
+    }
+
+    /* Estilos para el nuevo modal de permisos GPS */
+    .gps-permission-modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 10000;
+      padding: 20px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .gps-permission-content {
+      background: white;
+      border-radius: 20px;
+      padding: 30px;
+      max-width: 400px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      animation: slideUp 0.4s ease;
+      position: relative;
+    }
+
+    .gps-permission-icon {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #3498db, #2980b9);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      animation: pulse 2s infinite;
+    }
+
+    .gps-permission-icon i {
+      font-size: 36px;
+      color: white;
+    }
+
+    .gps-permission-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #2c3e50;
+      margin-bottom: 15px;
+      line-height: 1.3;
+    }
+
+    .gps-permission-text {
+      font-size: 16px;
+      color: #5a6c7d;
+      line-height: 1.5;
+      margin-bottom: 25px;
+    }
+
+    .gps-permission-features {
+      background: #f8f9fa;
+      border-radius: 12px;
+      padding: 20px;
+      margin-bottom: 25px;
+      text-align: left;
+    }
+
+    .gps-feature {
+      display: flex;
+      align-items: center;
+      margin-bottom: 12px;
+      font-size: 14px;
+      color: #495057;
+    }
+
+    .gps-feature:last-child {
+      margin-bottom: 0;
+    }
+
+    .gps-feature i {
+      color: #27ae60;
+      margin-right: 10px;
+      font-size: 16px;
+    }
+
+    .gps-permission-buttons {
+      display: flex;
+      gap: 12px;
+      flex-direction: column;
+    }
+
+    .gps-permission-btn {
+      padding: 16px 24px;
+      border: none;
+      border-radius: 12px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .gps-permission-btn.allow {
+      background: linear-gradient(135deg, #27ae60, #2ecc71);
+      color: white;
+    }
+
+    .gps-permission-btn.allow:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 20px rgba(39, 174, 96, 0.3);
+    }
+
+    .gps-permission-btn.deny {
+      background: #f8f9fa;
+      color: #6c757d;
+      border: 2px solid #e9ecef;
+    }
+
+    .gps-permission-btn.deny:hover {
+      background: #e9ecef;
+      transform: translateY(-1px);
+    }
+
+    .gps-permission-footer {
+      margin-top: 20px;
+      font-size: 12px;
+      color: #95a5a6;
+    }
+
+    /* Animaciones */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes slideUp {
+      from { 
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to { 
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+      100% { transform: scale(1); }
+    }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .gps-permission-content {
+        padding: 25px 20px;
+        margin: 10px;
+      }
+      
+      .gps-permission-icon {
+        width: 70px;
+        height: 70px;
+      }
+      
+      .gps-permission-icon i {
+        font-size: 32px;
+      }
+      
+      .gps-permission-title {
+        font-size: 22px;
+      }
+      
+      .gps-permission-text {
+        font-size: 15px;
+      }
+    }
+
+    .notification-item {
+      display: flex;
+      align-items: flex-start;
+      padding: 12px;
+      border-bottom: 1px solid #eee;
+      background: white;
+      transition: background-color 0.2s;
+    }
+    
+    .notification-item:hover {
+      background: #f8f9fa;
+    }
+    
+    .notification-item.notification-warning {
+      border-left: 4px solid #ffc107;
+    }
+    
+    .notification-item.notification-error {
+      border-left: 4px solid #dc3545;
+    }
+    
+    .notification-item.notification-success {
+      border-left: 4px solid #28a745;
+    }
+    
+    .notification-item.notification-bus {
+      border-left: 4px solid #007bff;
+    }
+    
+    .notification-icon {
+      margin-right: 12px;
+      font-size: 18px;
+      color: #6c757d;
+    }
+    
+    .notification-warning .notification-icon {
+      color: #ffc107;
+    }
+    
+    .notification-error .notification-icon {
+      color: #dc3545;
+    }
+    
+    .notification-success .notification-icon {
+      color: #28a745;
+    }
+    
+    .notification-bus .notification-icon {
+      color: #007bff;
+    }
+    
+    .notification-content {
+      flex: 1;
+      font-size: 14px;
+      line-height: 1.4;
+    }
+    
+    .notification-time {
+      font-size: 12px;
+      color: #6c757d;
+      margin-top: 4px;
+    }
+    
+    .notification-actions {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+    }
+    
+    .notification-btn {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+    
+    .notification-btn.track {
+      background-color: #007bff;
+      color: white;
+    }
+    
+    .notification-btn.track:hover {
+      background-color: #0069d9;
+    }
+    
+    .notification-btn.untrack {
+      background-color: #dc3545;
+      color: white;
+    }
+    
+    .notification-btn.untrack:hover {
+      background-color: #c82333;
+    }
+    
+    .notification-badge {
+      background: #dc3545;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: bold;
+      position: absolute;
+      top: -5px;
+      right: -5px;
+    }
+
+    .nav-button.active {
+      background: #ebf5fb;
+      color: #3498db;
+    }
+
+    /* Estilos para iconos personalizados */
+    .icono-inicio {
+      background-color: #2ecc71;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    .icono-fin {
+      background-color: #e74c3c;
+      border: 3px solid white;
+      border-radius: 50%;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+    }
+
+    /* NUEVO: Estilos para el contenedor de iconos del header */
+    .header-icons {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-menu {
+      position: relative;
+    }
+
+    .user-button {
+      background: none;
+      border: none;
+      color: white;
+      font-size: 18px;
+      cursor: pointer;
+      padding: 8px;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+    }
+
+    .user-button:hover {
+      background-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .user-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      min-width: 180px;
+      z-index: 1000;
+      display: none;
+      overflow: hidden;
+    }
+
+    .user-dropdown.show {
+      display: block;
+    }
+
+    .user-dropdown-item {
+      display: flex;
+      align-items: center;
+      padding: 12px 16px;
+      text-decoration: none;
+      color: #333;
+      transition: background-color 0.2s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .user-dropdown-item:hover {
+      background-color: #f5f5f5;
+    }
+
+    .user-dropdown-item i {
+      margin-right: 10px;
+      width: 16px;
+      text-align: center;
+    }
+
+    .user-dropdown-divider {
+      height: 1px;
+      background-color: #e0e0e0;
+      margin: 0;
+    }
+    
+    /* Estilos para el panel de notificaciones mejorado */
+    .notification-panel {
+      position: absolute;
+      top: 100%;
+      right: 10px;
+      width: 320px;
+      max-height: 400px;
+      overflow-y: auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+      z-index: 1000;
+      display: none;
+    }
+    
+    .notification-panel h3 {
+      padding: 15px;
+      margin: 0;
+      border-bottom: 1px solid #eee;
+      background: #f8f9fa;
+      border-radius: 8px 8px 0 0;
+    }
+    
+    .notification-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    
+    .tracking-info {
+      margin-top: 10px;
+      padding: 10px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    .tracking-info p {
+      margin: 0 0 5px 0;
+    }
+    
+    .tracking-buses {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+    }
+    
+    .tracking-bus {
+      background: #007bff;
+      color: white;
+      padding: 2px 6px;
+      border-radius: 12px;
+      font-size: 11px;
+      display: flex;
+      align-items: center;
+    }
+    
+    .tracking-bus button {
+      background: none;
+      border: none;
+      color: white;
+      margin-left: 4px;
+      cursor: pointer;
+      font-size: 10px;
+    }
+ 

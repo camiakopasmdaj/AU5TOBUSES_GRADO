@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <title>Administrador - Trazador de Rutas</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="admin_trazador.css">
+
+
+
+</head>
+<body>
+
+<header>
+  <h1> Trazador de Rutas - Sistema de Transporte</h1>
+</header>
+
+<div class="controls">
+  <div class="grupo-botones">
+    <button class="btn btn-secondary" onclick="window.location.href='../registrar_autobus/registrar_autobus.html'">
+      Regresar
+    </button>
+    
+    <button class="btn btn-primary" id="btn-editar" onclick="activarModoEdicion()">
+       Editar
+    </button>
+  </div>
+  
+  
+  
+  <div class="botones-edicion oculto movil-colapsado" id="botones-edicion">
+    <button class="btn btn-info" id="btn-trazar-puntos" onclick="activarTrazadoPuntos()">
+       Trazar Puntos
+    </button>
+    <button class="btn btn-warning" id="btn-eliminar-punto" onclick="activarEliminacionPuntos()">
+       Eliminar Punto
+    </button>
+    <button class="btn btn-warning" onclick="deshacerUltimo()">
+      ↩ Deshacer
+    </button>
+    <button class="btn btn-danger" onclick="eliminarTodo()">
+       Eliminar Todo
+    </button>
+  </div>
+</div>
+
+
+<div id="map"></div>
+<
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+<
+
+<script type="module" src="admin_trazador_principal.js"></script>
+
+</body>
+</html>

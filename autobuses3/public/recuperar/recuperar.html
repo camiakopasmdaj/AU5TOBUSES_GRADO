@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Recuperar Contraseña | BusTracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="css/recupear.css">
+</head>
+<body>
+
+  <div class="container">
+    <div class="logo">
+      <!-- Reemplaza "logo.jpg" con la ruta correcta de tu imagen -->
+      <img src="imagenes/logo.jpg" alt="Logo BusTracker">
+    </div>
+    
+    <h2>Recuperar Contraseña</h2>
+    <p>Ingresa tu correo electrónico registrado y te enviaremos un enlace para restablecer tu contraseña.</p>
+    
+    <div class="input-group">
+      <i class="fas fa-envelope"></i>
+      <input type="email" id="emailRecuperar" placeholder="Tu correo electrónico">
+    </div>
+    
+    <button id="btnEnviarCorreo">
+      <i class="fas fa-paper-plane"></i>
+      Enviar enlace de recuperación
+    </button>
+    
+    <div class="spam-notice">
+      <i class="fas fa-exclamation-triangle"></i>
+      <strong>Importante:</strong> Revisa tu carpeta de SPAM si no encuentras el correo en tu bandeja de entrada.
+    </div>
+    
+    <a href="login.html" class="back-link">
+      <i class="fas fa-arrow-left"></i>
+      Volver al inicio de sesión
+    </a>
+  </div>
+
+  <div id="notification" class="notification"></div>
+
+   <script type="module" src="js/recuperar_principal.js"></script>
+</body>
+</html>

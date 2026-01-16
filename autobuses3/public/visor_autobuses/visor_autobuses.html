@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Visor de ruta TP10M</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="visor_autobuses.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <!-- Nuevo Modal mejorado para permisos de GPS -->
+  <div id="gpsPermissionModal" class="gps-permission-modal">
+    <div class="gps-permission-content">
+      <div class="gps-permission-icon">
+        <i class="fas fa-location-dot"></i>
+      </div>
+      
+      <h2 class="gps-permission-title">Permiso de Ubicación</h2>
+      
+      <p class="gps-permission-text">
+        Para brindarte la mejor experiencia y mostrarte los buses cercanos, necesitamos acceso a tu ubicación.
+      </p>
+      
+      <div class="gps-permission-features">
+        <div class="gps-feature">
+          <i class="fas fa-check-circle"></i>
+          <span>Ver buses cerca de tu ubicación actual</span>
+        </div>
+        <div class="gps-feature">
+          <i class="fas fa-check-circle"></i>
+          <span>Notificaciones cuando el bus esté cerca</span>
+        </div>
+        <div class="gps-feature">
+          <i class="fas fa-check-circle"></i>
+          <span>Rutas optimizadas desde tu posición</span>
+        </div>
+        <div class="gps-feature">
+          <i class="fas fa-check-circle"></i>
+          <span>Ver tu ubicación en el mapa</span>
+        </div>
+      </div>
+      
+      <div class="gps-permission-buttons">
+        <button id="allowGps" class="gps-permission-btn allow">
+          <i class="fas fa-check"></i>
+          Permitir Ubicación
+        </button>
+        <button id="denyGps" class="gps-permission-btn deny">
+          <i class="fas fa-times"></i>
+          No Permitir
+        </button>
+      </div>
+      
+      <div class="gps-permission-footer">
+        Tu privacidad es importante. Solo usamos tu ubicación para mejorar tu experiencia en la app.
+      </div>
+    </div>
+  </div>
+
+  <div class="mobile-app">
+    <div class="app-header">
+      <div class="app-title">
+      <img src="../imagenes/logo.jpg" alt="Logo" class="logo-img" style="width: 30px; height: 30px; border-radius: 5px; margin-right: 10px;">
+      <span>Onroute</span>
+  </div>
+      
+      <div class="header-icons">
+        <div class="notification-bell" id="bell">
+          <i class="fas fa-bell"></i>
+          <span class="notification-badge" id="notificationCount">0</span>
+        </div>
+        
+        <!-- NUEVO: Menú de usuario -->
+        <div class="user-menu" id="userMenu">
+          <button class="user-button" id="userButton">
+            <i class="fas fa-user-circle"></i>
+          </button>
+          <div class="user-dropdown" id="userDropdown">
+            <a href="../editor_usuario/editor_usuario.html" class="user-dropdown-item">
+              <i class="fas fa-user-edit"></i>
+              Editar usuario
+            </a>
+            <div class="user-dropdown-divider"></div>
+            <button class="user-dropdown-item" id="logoutButton">
+              <i class="fas fa-sign-out-alt"></i>
+              Cerrar sesión
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <div class="notification-panel" id="notificationPanel">
+        <h3>Notificaciones</h3>
+        <div class="tracking-info" id="trackingInfo">
+          <p><strong>Buses con notificación activa:</strong></p>
+          <div class="tracking-buses" id="trackingBuses">
+           
+          </div>
+        </div>
+        <ul class="notification-list" id="notifList"></ul>
+      </div>
+    </div>
+    
+    <div class="map-container">
+      <div id="map"></div>
+      
+      <div class="status-bar">
+        <div class="connection-status">
+          <span id="connection-icon">🟡</span>
+          <span id="connection-status">Conectando...</span>
+        </div>
+        <div class="update-status">
+          <i class="far fa-clock"></i>
+          <span id="update-status">--:--:--</span>
+        </div>
+      </div>
+      
+      <div class="floating-buttons">
+        <button class="action-button" id="locateMe">
+          <i class="fas fa-location-arrow"></i>
+        </button>
+        <button class="action-button" id="zoomIn">
+          <i class="fas fa-plus"></i>
+        </button>
+        <button class="action-button" id="zoomOut">
+          <i class="fas fa-minus"></i>
+        </button>
+        <!-- ✅ NUEVO: Botón para centrar en bus activo -->
+        <button class="action-button" id="centerActiveBus">
+            <i class="fas fa-bus"></i>
+        </button>
+      </div>
+    </div>
+    
+    <div class="bottom-nav">
+      <button class="nav-button active" id="verBuses">
+        <i class="fas fa-bus"></i> Ver bus TP1OM
+      </button>
+      <button class="nav-button" id="verTrazado">
+        <i class="fas fa-route"></i> Ver Ruta
+      </button>
+      <button class="nav-button" onclick="location.href='../destino/destino.html'">
+        <i class="fas fa-map-marker-alt"></i> Mi destino
+      </button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  
+  <!-- IMPORTAR TODOS LOS ARCHIVOS JS SEPARADOS (EN ORDEN CORRECTO) -->
+  <script src="visor_autobuses_main.js"></script>
+  <script src="visor_autobuses_firebase.js"></script>
+  <script src="visor_autobuses_utils.js"></script>
+  <script src="visor_autobuses_map.js"></script>
+  <script src="visor_autobuses_gps.js"></script>
+  <script src="visor_autobuses_notifications.js"></script>
+  <script src="visor_autobuses_mqtt.js"></script>
+  <script src="visor_autobuses_ui.js"></script>
+</body>
+</html>

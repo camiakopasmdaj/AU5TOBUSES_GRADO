@@ -1,0 +1,194 @@
+
+    /* Variables de color */
+    :root {
+      --primary-color: #2c3e50;
+      --secondary-color: #34495e;
+      --accent-color: #3498db;
+      --background-color: #f8f9fa;
+      --card-color: #ffffff;
+      --text-color: #333333;
+      --text-light: #7f8c8d;
+      --border-color: #e1e8ed;
+      --error-color: #e74c3c;
+      --success-color: #2ecc71;
+      --gradient-start: #74ebd5;
+      --gradient-end: #ACB6E5;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Roboto', sans-serif;
+      background: linear-gradient(135deg, var(--gradient-start), var(--gradient-end));
+      color: var(--text-color);
+      line-height: 1.6;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+
+    .container {
+      background-color: var(--card-color);
+      border-radius: 12px;
+      box-shadow: 0 15px 35px rgba(0, 0, 0, 0.2);
+      padding: 40px;
+      width: 100%;
+      max-width: 450px;
+      transition: transform 0.3s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-5px);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 25px;
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--primary-color);
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 30px;
+      color: var(--secondary-color);
+      font-weight: 500;
+    }
+
+    .input-group {
+      margin-bottom: 20px;
+      position: relative;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: 500;
+      color: var(--secondary-color);
+    }
+
+    input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      font-size: 16px;
+      transition: all 0.3s;
+      background-color: #f8f9fa;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2);
+      background-color: white;
+    }
+
+    .password-info {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 5px;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background-color: var(--accent-color);
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 20px;
+      margin: 20px 0;
+      cursor: pointer;
+      width: 100%;
+      font-family: 'Roboto', sans-serif;
+      font-size: 16px;
+      font-weight: 500;
+      transition: background-color 0.3s, transform 0.2s;
+    }
+
+    .btn:hover {
+      background-color: #2980b9;
+      transform: translateY(-2px);
+    }
+
+    .btn:active {
+      transform: translateY(0);
+    }
+
+    .btn-icon {
+      margin-right: 10px;
+      font-weight: bold;
+    }
+
+    #mensaje {
+      padding: 12px 16px;
+      border-radius: 8px;
+      margin: 15px 0;
+      text-align: center;
+      font-weight: 500;
+      display: none;
+    }
+
+    .error {
+      background-color: rgba(231, 76, 60, 0.1);
+      color: var(--error-color);
+      border: 1px solid rgba(231, 76, 60, 0.3);
+      display: block;
+    }
+
+    .success {
+      background-color: rgba(46, 204, 113, 0.1);
+      color: var(--success-color);
+      border: 1px solid rgba(46, 204, 113, 0.3);
+      display: block;
+    }
+
+    .loading {
+      background-color: rgba(52, 152, 219, 0.1);
+      color: var(--accent-color);
+      border: 1px solid rgba(52, 152, 219, 0.3);
+      display: block;
+    }
+
+    .footer-links {
+      text-align: center;
+      margin-top: 25px;
+      color: var(--text-light);
+      font-size: 14px;
+    }
+
+    .footer-links a {
+      color: var(--accent-color);
+      text-decoration: none;
+      transition: color 0.3s;
+    }
+
+    .footer-links a:hover {
+      color: #2980b9;
+      text-decoration: underline;
+    }
+
+    .admin-note {
+      font-size: 12px;
+      color: var(--text-light);
+      margin-top: 5px;
+      font-style: italic;
+    }
+
+    @media (max-width: 480px) {
+      .container {
+        padding: 30px 20px;
+      }
+    }
+ 

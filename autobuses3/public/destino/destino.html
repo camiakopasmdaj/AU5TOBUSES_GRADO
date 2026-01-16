@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Onroute - Encuentra tu destino</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <link rel="stylesheet" href="destino.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css" />
+</head>
+<body>
+
+  <!-- Header fijo -->
+  <header>
+    <button class="btn-regresar" onclick="window.location.href='../visor_autobuses/visor_autobuses.html'">←</button>
+    <div class="header-content">
+      <img src="../imagenes/logo.jpg" alt="Logo Onroute" class="logo">
+      <h2>Encuentra tu destino</h2>
+    </div>
+  </header>
+
+  <main>
+    
+    <div class="search-container">
+      <label for="destino">Ingresa tu destino:</label>
+      <input type="text" id="destino" placeholder="Ejemplo: Parque Caldas, Universidad...">
+      <ul id="sugerencias"></ul>
+    </div>
+
+    <div class="map-container">
+      <div id="map"></div>
+    </div>
+
+   
+    <div class="route-info slide-up" id="routeInfo">
+      <div class="route-header">
+        <h3 id="routeTitle">Ruta TP10M</h3>
+        <button class="close-btn" onclick="cerrarPanelRuta()">×</button>
+      </div>
+      <p id="routeDescription">Ruta principal que conecta el norte y sur de la ciudad.</p>
+      
+      <div class="route-details">
+        <div class="detail-item">
+          <span class="detail-label">Origen:</span>
+          <span class="detail-value" id="routeOrigin">Terminal Norte</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Destino:</span>
+          <span class="detail-value" id="routeDestination">Terminal Sur</span>
+        </div>
+        <div class="detail-item">
+          <span class="detail-label">Frecuencia:</span>
+          <span class="detail-value" id="routeFrequency">15-20 min</span>
+        </div>
+      </div>
+      
+      <div class="route-stats">
+        <div class="stat-box">
+          <div class="stat-value" id="routeDistance">12.5 km</div>
+          <div class="stat-label">Distancia</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-value" id="routeDuration">45 min</div>
+          <div class="stat-label">Duración</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel de botones inferior fijo -->
+    <div class="bottom-panel">
+      <div class="button-group">
+        <button onclick="buscarDestinos()">Buscar destino</button>
+        <button id="btnRutaTP10M" onclick="mostrarRutaTP10M()">Ruta TP10M</button>
+      </div>
+    </div>
+
+    <!-- Indicador de carga -->
+    <div class="loading" id="loading">Cargando...</div>
+  </main>
+
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-database-compat.js"></script>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.min.js"></script>
+
+  
+  <script type="module" src="destino_principal.js"></script>
+
+
+</body>
+</html>
